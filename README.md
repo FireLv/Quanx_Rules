@@ -8,8 +8,8 @@ Quantumult X 规则集（按 App 分类）。
 |------|------|
 | `ChatGPT_Rules.conf` | ChatGPT 移动端分流规则 |
 | `Gemini_Rules.conf` | Gemini 分流规则 |
-| `vipshop-adblock.conf` | 唯品会开屏广告屏蔽（分流规则，远程筛选） |
-| `startup_v3.js` | 唯品会开屏彻底关闭脚本（配合 `vipshop-adblock.conf` 使用，可选） |
+| `vipshop-adblock.list` | 唯品会开屏广告屏蔽（分流规则，远程筛选） |
+| `startup_v3.js` | 唯品会开屏彻底关闭脚本（配合 `vipshop-adblock.list` 使用，可选） |
 
 ---
 
@@ -22,19 +22,19 @@ Quantumult X 规则集（按 App 分类）。
 Quantumult X → 右下角「配置」→「分流规则」→ 右上角「＋」→ 选择「筛选」→ 粘贴下面 URL →「获取」→ 确认启用。
 
 ```
-https://raw.githubusercontent.com/FireLv/Quanx_Rules/main/vipshop-adblock.conf
+https://raw.githubusercontent.com/FireLv/Quanx_Rules/main/vipshop-adblock.list
 ```
 
 国内访问 raw.githubusercontent.com 慢的话，用 jsDelivr 镜像：
 
 ```
-https://cdn.jsdelivr.net/gh/FireLv/Quanx_Rules@main/vipshop-adblock.conf
+https://cdn.jsdelivr.net/gh/FireLv/Quanx_Rules@main/vipshop-adblock.list
 ```
 
 也可直接写进配置文件 `[filter_remote]` 段：
 
 ```
-https://raw.githubusercontent.com/FireLv/Quanx_Rules/main/vipshop-adblock.conf, tag=唯品会开屏屏蔽, update-interval=86400, opt-parser=false, force-policy=REJECT
+https://raw.githubusercontent.com/FireLv/Quanx_Rules/main/vipshop-adblock.list, tag=唯品会开屏屏蔽, update-interval=86400, opt-parser=false, force-policy=REJECT
 ```
 
 ### 2. 彻底关闭开屏（可选）
