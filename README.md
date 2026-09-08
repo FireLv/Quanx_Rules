@@ -4,50 +4,43 @@ Quantumult X 规则集（按 App 分类）。
 
 ## 文件列表
 
-| 文件 | 说明 |
-|------|------|
-| `ChatGPT_Rules.conf` | ChatGPT 移动端分流规则 |
-| `Gemini_Rules.conf` | Gemini 分流规则 |
-| `vipshop-adblock.list` | 唯品会开屏广告屏蔽（分流规则，远程筛选） |
-| `startup_v3.js` | 唯品会开屏彻底关闭脚本（配合 `vipshop-adblock.list` 使用，可选） |
+| 文件 | 类型 | 说明 |
+|------|------|------|
+| `ChatGPT_Rules.conf` | 重写 | ChatGPT 移动端规则 |
+| `Gemini_Rules.conf` | 重写 | Gemini 规则 |
+| `VipshopAd.conf` | 重写 | 唯品会开屏广告屏蔽（url reject，需 MITM） |
+| `startup_v3.js` | 脚本 | 唯品会开屏彻底关闭脚本（改写服务端开关，可选） |
 
 ---
 
 ## 唯品会开屏广告屏蔽
 
-基于 2026-09-08 抓包 (HAR) 分析，屏蔽唯品会 iOS App 的开屏广告、弹窗与浮层。
+基于 2026-09-08 抓包 (HAR) 分析。唯品会开屏广告全走核心业务域 `mapi.appvipshop.com`，
+域名级分流无法精准拦截，因此使用**重写 url reject**（MITM）按 URL 拦截，不影响首页/商品功能。
 
-### 1. 添加分流规则（必做）
+### 1. 添加重写规则（必做）
 
-Quantumult X → 右下角「配置」→「分流规则」→ 右上角「＋」→ 选择「筛选」→ 粘贴下面 URL →「获取」→ 确认启用。
-
-```
-https://raw.githubusercontent.com/FireLv/Quanx_Rules/main/vipshop-adblock.list
-```
-
-国内访问 raw.githubusercontent.com 慢的话，用 jsDelivr 镜像：
+Quantumult X → 右下角「配置」→「**重写**」→「远程重写」→ 右上角「＋」→ 类型选「**重写**」→ 粘贴：
 
 ```
-https://cdn.jsdelivr.net/gh/FireLv/Quanx_Rules@main/vipshop-adblock.list
+https://cdn.jsdelivr.net/gh/FireLv/Quanx_Rules@main/VipshopAd.conf
 ```
 
-也可直接写进配置文件 `[filter_remote]` 段：
+国内直连 GitHub raw 不通，jsDelivr 镜像稳定。资源标签写「唯品会开屏屏蔽」，保存。
 
-```
-https://raw.githubusercontent.com/FireLv/Quanx_Rules/main/vipshop-adblock.list, tag=唯品会开屏屏蔽, update-interval=86400, opt-parser=false, force-policy=REJECT
-```
+前提：MITM 已开启、证书已信任（QX 抓包分析时已装过）。
 
 ### 2. 彻底关闭开屏（可选）
 
-如果添加分流规则后仍有开屏广告，需配合脚本强制关闭开屏开关。
+如果 url reject 后仍有开屏，需配合脚本改写服务端开屏开关 `startUpConf.view_switch=0`。
 
-Quantumult X → 配置 → 重写 → 远程重写：
+Quantumult X → 配置 → 重写 → 远程重写 →「＋」：
 
 ```
-https://raw.githubusercontent.com/FireLv/Quanx_Rules/main/startup_v3.js, tag=唯品会开屏关闭, update-interval=86400
+https://cdn.jsdelivr.net/gh/FireLv/Quanx_Rules@main/startup_v3.js
 ```
 
-本地重写（需要开启 MITM，证书信任）：
+本地重写（二选一，远程脚本引用需要本地规则指向它）：
 
 ```
 [rewrite_local]
@@ -58,11 +51,18 @@ https://raw.githubusercontent.com/FireLv/Quanx_Rules/main/startup_v3.js, tag=唯
 
 | 环节 | 请求 | 处理 |
 |------|------|------|
-| 开屏总开关 | `operation/startup/v3` | 脚本改写 `view_switch=0`（不可 REJECT） |
-| 开屏广告取数 | `activity/advertisement/get` (is_preload=1) | REJECT |
-| 弹窗配置 | `operation/popup/v1` | REJECT |
-| 悬浮球/浮层 | `layout/assistant/float_ball`、`activity/float_ball/get` | REJECT |
-| 广告素材 CDN | `(b\|h2).appsimg.com/upload/{momin,mst}/` | REJECT |
-| 广告埋点 | `sc.appvipshop.com` 含 advtrigger 的请求 | REJECT（可选） |
+| 开屏总开关 | `operation/startup/v3` | 脚本改写 `view_switch=0`（**不可 reject**，返回首页菜单等关键数据） |
+| 开屏广告取数 | `activity/advertisement/get` | url reject |
+| 弹窗配置 | `operation/popup/v1` | url reject（可选） |
+| 悬浮球/浮层 | `layout/assistant/float_ball`、`activity/float_ball/get` | url reject（可选） |
+| 广告素材 CDN | `(b\|h2).appsimg.com/*/upload/{momin,mst}/` | url reject（可选；`merchandise`/`brand` 商品图目录保留） |
+| 广告埋点 | `sc.appvipshop.com` 含 `advtrigger` | url reject（可选） |
 
-**注意**：`mapi.appvipshop.com` 是核心 API 网关，`startup/v3`、`operation/switch/v1`、`dynamic-config/v1` 等返回首页关键数据，**切勿整体 REJECT**；`appsimg.com` 的 `merchandise/`（商品图）与 `brand/`（品牌图）目录也**不可屏蔽**。
+**注意**：`mapi.appvipshop.com` 是核心 API 网关，`startup/v3`、`operation/switch/v1`、`dynamic-config/v1`
+返回首页关键数据，**切勿整体 REJECT**；`appsimg.com` 的 `merchandise/`（商品图）与 `brand/`（品牌图）目录也不可屏蔽。
+
+## 为什么不用分流（filter）规则
+
+Quantumult X 分流规则只支持 host/host-keyword/host-suffix/user-agent/ip-cidr/geoip/process 等**域名/IP 层**类型，
+**不支持 url 正则**。唯品会广告与正常业务共用同一批域名（`mapi.appvipshop.com` 等），域名级拦截必然误伤，
+所以只能走重写（MITM）层按 URL 拦截。
