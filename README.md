@@ -10,6 +10,8 @@ Quantumult X 规则集（按 App 分类）。
 | `Gemini_Rules.conf` | 重写 | Gemini 规则 |
 | `VipshopAd.conf` | 重写 | 唯品会开屏广告屏蔽（url reject，需 MITM） |
 | `startup_v3.js` | 脚本 | 唯品会开屏彻底关闭脚本（改写服务端开关，可选） |
+| `BestpayChinaMobileAds.conf` | 重写 | 翼支付 + 中国移动 去开屏/首页弹窗（2026-09-18 抓包实证，7 条规则） |
+| `quantumult_merged_20260912.conf` | 完整配置 | 已并入上述全部规则的 QX 完整配置（含证书，勿公开分发给他人无关用途） |
 
 ---
 
@@ -60,6 +62,45 @@ https://cdn.jsdelivr.net/gh/FireLv/Quanx_Rules@main/startup_v3.js
 
 **注意**：`mapi.appvipshop.com` 是核心 API 网关，`startup/v3`、`operation/switch/v1`、`dynamic-config/v1`
 返回首页关键数据，**切勿整体 REJECT**；`appsimg.com` 的 `merchandise/`（商品图）与 `brand/`（品牌图）目录也不可屏蔽。
+
+## 翼支付 + 中国移动 去开屏 / 首页弹窗
+
+基于 2026-09-18 抓包（`quantumult-x-2026-09-18-103204.har`，690 条请求）实证整理，规则见 `BestpayChinaMobileAds.conf`，
+7 条启用规则全部命中真实请求，命中项状态码均为 200（未打在已废弃的 404 接口上）。
+
+远程引用（QX 会自动并入该资源自带的 hostname）：
+
+```
+https://cdn.jsdelivr.net/gh/FireLv/Quanx_Rules@main/BestpayChinaMobileAds.conf
+```
+
+手工并入则需把 hostname 写进 `[mitm]`：
+
+```
+hostname = %APPEND% mapi-app.bestpay.com.cn, api-p0.yksdks.com
+```
+
+（若已引用墨鱼《去开屏 V2.0》，`client.app.coc.10086.cn` 与 `*.1rtb.net` 会自动并入，无需重复添加。）
+
+### 屏蔽清单
+
+| App | 环节 | 接口 | 动作 |
+|------|------|------|------|
+| 翼支付 | 开屏取数 | `mapi-app.bestpay.com.cn/gapi/appClient/noEnc/unionOpenAds` | reject-200 |
+| 翼支付 | 广告 SDK 竞价/埋点 | `sdk.1rtb.net/sdk/req_ad`、`ad-api.adn-plus.com.cn/mb/sdk1/json`、`ctrace.sogaha.cn/sdkLogPathUrl` | reject-200 / reject |
+| 中国移动 | 启动配置 | `client.app.coc.10086.cn/biz-orange/DN/init/startInit` | reject-200 |
+| 中国移动 | 开屏配置（YK 广告 SDK） | `api-p0.yksdks.com/v6/gcf` | reject-200 |
+| 中国移动 | 首页弹窗 | `client.app.coc.10086.cn/biz-orange/DN/homepagePopup/getSortInfo` | reject-200 |
+
+### 已知局限
+
+1. 中国移动开屏素材有本地缓存，启用后可能还需**连续两次冷启动**才完全消失。
+2. 翼支付**首页弹窗**本次抓包未捕获（抓包只覆盖冷启动、未停留首页）。需重抓：
+   开抓包 → 冷启动翼支付 → 首页停留 10 秒以上 → 导出。
+3. `homepagePopup/getSortInfo` 同时承载自营运营活动弹窗，拦截后首页活动弹窗一并消失。
+4. 严禁拦截基础设施域（会导致登录/推送/安全校验异常）：
+   `atoken.m.taobao.com`、`amdc.m.taobao.com`、`dypnsapi-dualstack.aliyuncs.com`（号码认证）、
+   `ha-cmim.cmcc-cs.cn`、`push.it.10086.cn`、`10086.online-cmcc.cn`、`clientaccess.10086.cn`、`h.app.coc.10086.cn`。
 
 ## 为什么不用分流（filter）规则
 
