@@ -11,6 +11,7 @@ Quantumult X 规则集（按 App 分类）。
 | `VipshopAd.conf` | 重写 | 唯品会开屏广告屏蔽（url reject，需 MITM） |
 | `startup_v3.js` | 脚本 | 唯品会开屏彻底关闭脚本（改写服务端开关，可选） |
 | `BestpayChinaMobileAds.conf` | 重写 | 翼支付 + 中国移动 去开屏/首页弹窗（2026-09-18 抓包实证，7 条规则） |
+| `JDAds.conf` | 重写 | 京东去开屏广告（2026-09-19 抓包实证，素材预取拦截） |
 | `quantumult_merged_20260912.conf` | 完整配置 | 已并入上述全部规则的 QX 完整配置（含证书，勿公开分发给他人无关用途） |
 
 ---
@@ -62,6 +63,50 @@ https://cdn.jsdelivr.net/gh/FireLv/Quanx_Rules@main/startup_v3.js
 
 **注意**：`mapi.appvipshop.com` 是核心 API 网关，`startup/v3`、`operation/switch/v1`、`dynamic-config/v1`
 返回首页关键数据，**切勿整体 REJECT**；`appsimg.com` 的 `merchandise/`（商品图）与 `brand/`（品牌图）目录也不可屏蔽。
+
+## 京东去开屏广告
+
+基于 2026-09-19 抓包（`quantumult-x-2026-09-19-133652.har`，522 条请求，京东 16.0.0）。
+
+远程引用：
+
+```
+https://cdn.jsdelivr.net/gh/FireLv/Quanx_Rules@main/JDAds.conf
+```
+
+手工并入则需把 hostname 写进 `[mitm]`：
+
+```
+hostname = %APPEND% m.360buyimg.com
+```
+
+### 为什么拦素材而不是拦取数接口
+
+京东 16.x 的开屏是**预缓存型**：取数走加密通道（全包无 URL 型 `functionId=start`，
+`client.action` 体内 `functionId=startup` 的响应只有 `{"deviceLevel":1}` 属设备分级；
+`basicConfig` 378KB 深搜无开屏开关），素材走本地缓存 —— 墨鱼《去开屏 V2.0》京东段被标
+`[invalid]` 的根因正在于此，URL 层已拦不到取数。
+
+实证链路（北京时间）：09-20 08:28:14 冷启动 → 08:28:21.949 预下载开屏素材
+`m.360buyimg.com/mobilecms/s1125x2436_jfs/...jpg.avif`（200 / 81,658B）。
+导出该素材转 PNG 后与截图 `IMG_0655` 逐像素一致。响应头
+`Referer: download_Image_JDAppHome`、`Age: 50275`、`Cache-Control: max-age≈90天`
+证明：展示用的素材来自本地缓存（秒出），08:28:21 这次是进首页后的**预取刷新**。
+
+因此改为断掉预取供给：
+
+| 环节 | 接口 | 动作 |
+|------|------|------|
+| 开屏素材预取 | `m.360buyimg.com/mobilecms/s1125x2436_` | reject-200 |
+
+**不影响首页图片**：mobilecms 下首页图片规格为 `s714x714`（商品主图）、`s240x240`、`s225x225`，
+规则均不命中；全站 `360buyimg.com` 高度≥1000px 的全屏规格仅 `s1125x2436` 这一个
+（本包 35 条 mobilecms 请求中仅 1 条命中）。
+
+### ⚠ 见效条件
+
+拦预取**不会清除已缓存的旧素材**，缓存有效期约 90 天，启用后可能数天内照样出广告。
+**需卸载重装京东**清掉本地缓存才会立即见效；此后每次启动的预取都被拦，缓存不再被刷新，即长期无广告。
 
 ## 翼支付 + 中国移动 去开屏 / 首页弹窗
 
