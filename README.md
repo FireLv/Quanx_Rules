@@ -12,7 +12,7 @@ Quantumult X 规则集（按 App 分类）。
 | `startup_v3.js` | 脚本 | 唯品会开屏彻底关闭脚本（改写服务端开关，可选） |
 | `BestpayChinaMobileAds.conf` | 重写 | 翼支付 + 中国移动 去开屏/首页弹窗（2026-09-18 抓包实证，7 条规则） |
 | `JDAds.conf` | 重写 | 京东去开屏广告（2026-09-19 抓包实证，素材预取拦截） |
-| `ICBCCTAds.conf` | 重写 | 工银e生活 + 中国电信 去开屏广告（2026-09-19 抓包实证，2 条规则） |
+| `ChinaTelecomAds.conf` | 重写 | 中国电信去开屏广告（2026-09-19 抓包实证，拦加密投放配置） |
 | `quantumult_merged_20260912.conf` | 完整配置 | 已并入上述全部规则的 QX 完整配置（含证书，勿公开分发给他人无关用途） |
 
 ---
@@ -109,46 +109,38 @@ hostname = %APPEND% m.360buyimg.com
 拦预取**不会清除已缓存的旧素材**，缓存有效期约 90 天，启用后可能数天内照样出广告。
 **需卸载重装京东**清掉本地缓存才会立即见效；此后每次启动的预取都被拦，缓存不再被刷新，即长期无广告。
 
-## 工银e生活 + 中国电信 去开屏广告
+## 中国电信 去开屏广告
 
-基于 2026-09-19 抓包（`quantumult-x-2026-09-19-133652.har`，924 条请求）实证整理，规则见 `ICBCCTAds.conf`。
+基于 2026-09-19 抓包（`quantumult-x-2026-09-19-133652.har`，924 条请求）实证整理，规则见 `ChinaTelecomAds.conf`。
 
 远程引用：
 
 ```
-https://cdn.jsdelivr.net/gh/FireLv/Quanx_Rules@main/ICBCCTAds.conf
+https://cdn.jsdelivr.net/gh/FireLv/Quanx_Rules@main/ChinaTelecomAds.conf
 ```
 
 手工并入则需把 hostname 写进 `[mitm]`：
 
 ```
-hostname = %APPEND% image3.elife.icbc.com.cn, appupdates.189.cn
+hostname = %APPEND% appupdates.189.cn
 ```
 
 ### 屏蔽清单
 
 | App | 环节 | 接口 | 动作 |
 |------|------|------|------|
-| 工银e生活 7.3.8 | 开屏素材（当前投放） | `image3.elife.icbc.com.cn/filepath/elife/2026/09/17/11/a21eb2d2f4a944fa90ba95ff70d4a11a.jpg` | reject-200 |
 | 中国电信 13.4.0 | 开屏投放配置 | `appupdates.189.cn/actives/multiactiveiosclient.json` | reject-200 |
 
 ### 取证链路
 
-- **工银e生活**：北京 11:05:19 冷启动 → 11:05:20.001（启动后 0.1s）下载 1,125,809B 全屏图，
-  导出后与截图 `IMG_0656`「领券省心购」逐像素一致；其余 48 张内容图在 3s 后才开始加载。
-  全包无第三方广告 SDK 域，仅 `image1-4.elife.icbc.com.cn` + APM 埋点。
-- **中国电信**：截图 `IMG_0657`（iPhone 18 Pro 开屏，15:09）素材走本地缓存，全包无该图下载记录；
-  投放配置 `multiactiveiosclient.json`（2064B 整包 hex 加密）在 15:09:52 拉取，晚于开屏展示时刻
-  —— 即本次拉取驱动**下次**启动的开屏，拦掉即可断供后续投放。
+截图 `IMG_0657`（iPhone 18 Pro 开屏，15:09）素材走本地缓存，全包无该图下载记录；
+投放配置 `multiactiveiosclient.json`（2064B 整包 hex 加密）在 15:09:52 拉取，晚于开屏展示时刻
+—— 即本次拉取驱动**下次**启动的开屏，拦掉即可断供后续投放。
 
 ### 已知局限
 
-1. **工银e生活规则会随素材轮换失效**：开屏图 URL 为随机哈希，与内容图的路径结构、请求头完全同构
-   （`Accept`、`UA`、响应头逐项一致，无 `Referer`），没有类似京东 `s1125x2436_` 的稳定尺寸特征，
-   只能精确匹配当前这一张投放图。厂商换素材后需重新抓包更新。
-2. 中国电信侧拦配置不清除已缓存素材，**建议卸载重装**立即见效；此后每次启动的配置拉取都被拦，
-   开屏不再被注入。
-3. 同域 `clientmonitor.json`（监控采样）、`CDNNoticeConfig.json`（系统公告）、`areacodes.json`（区号）
+1. 拦配置不清除已缓存素材，**建议卸载重装**立即见效；此后每次启动的配置拉取都被拦，开屏不再被注入。
+2. 同域 `clientmonitor.json`（监控采样）、`CDNNoticeConfig.json`（系统公告）、`areacodes.json`（区号）
    与广告无关，未拦截。
 
 ## 翼支付 + 中国移动 去开屏 / 首页弹窗
